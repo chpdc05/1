@@ -1,6 +1,6 @@
 ## C1
 
-# quarto install tinytex
+# install.packages("tinytex")
 # install.packages(c("readxl","tseries","forecast","lmtest","vars","urca","moments"))
 # install.packages(c("FinTS","rugarch","rmgarch","BEKKs","tsDyn"))
 library(readxl); library(tseries); library(forecast); library(lmtest); library(vars); library(urca)
@@ -84,4 +84,5 @@ b <- bekk_fit(bekk_spec(model=list(type="bekk", asymmetric=FALSE)), as.matrix(Rd
 # Ljung-Box p>0.05 = good model. Lowest AIC/BIC = best.
 # Johansen: stat > 5pct = cointegrated. Granger p<0.05 = causes.
 # ARCH p<0.05 = use GARCH. dcca1+dccb1<1 = stable. BEKK A/G p<0.05 = spillover.
+
 
