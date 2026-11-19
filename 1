@@ -86,3 +86,120 @@ b <- bekk_fit(bekk_spec(model=list(type="bekk", asymmetric=FALSE)), as.matrix(Rd
 # ARCH p<0.05 = use GARCH. dcca1+dccb1<1 = stable. BEKK A/G p<0.05 = spillover.
 
 
+
+### BACKUP (ARIMA)
+
+library(readxl); library(tseries); library(forecast)
+
+# 1. Import (change path; sir's file has columns Date and Price)
+df <- read_excel("C:/Users/HP/Downloads/Nifty 50.xlsx")
+# df <- read.csv("C:/Users/HP/Downloads/file.csv")      # remove # for CSV
+head(df)
+
+# 2. Clean (1st column = Date, 2nd = Price)
+df <- df[, 1:2]
+names(df) <- c("Date", "Price")
+df$Date  <- as.Date(df$Date)
+# df$Date <- as.Date(df$Date, format = "%d-%m-%Y")      # remove # if Date turns NA
+df$Price <- as.numeric(gsub(",", "", df$Price))
+df <- na.omit(df[order(df$Date), ])
+Y <- ts(df$Price)
+
+# 3. Plot
+plot(df$Date, df$Price, type = "l", col = "blue", main = "Price")
+
+# 4. Stationarity on level (adf/pp p>0.05 = not stationary; kpss p<0.05 = not stationary)
+adf.test(Y); pp.test(Y); kpss.test(Y)
+
+# 5. First difference and test again
+dY <- diff(Y)
+plot(dY, main = "First Difference")
+adf.test(dY); pp.test(dY); kpss.test(dY)
+
+# 6. ACF and PACF
+acf(dY); pacf(dY)
+
+# 7. Manual models and comparison (lowest AIC/BIC = best)
+fit_110 <- Arima(Y, order = c(1,1,0))
+fit_011 <- Arima(Y, order = c(0,1,1))
+fit_111 <- Arima(Y, order = c(1,1,1))
+fit_211 <- Arima(Y, order = c(2,1,1))
+AIC(fit_110, fit_011, fit_111, fit_211)
+BIC(fit_110, fit_011, fit_111, fit_211)
+accuracy(fit_110)
+
+# 8. Residual check of the best model (change fit_110 to the best one)
+checkresiduals(fit_110)
+
+# 9. Forecast
+plot(forecast(fit_110, h = 20))
+
+# 10. Auto ARIMA (if sir asks)
+fit_auto <- auto.arima(Y)
+summary(fit_auto)
+plot(forecast(fit_auto, h = 20))
+
+# 11. In-sample forecast, 80% train / 20% test (if sir asks)
+n <- length(Y); k <- floor(0.8 * n)
+train <- ts(Y[1:k]); test <- Y[(k+1):n]
+fit_tr <- auto.arima(train)
+fc <- forecast(fit_tr, h = length(test))
+sqrt(mean((test - fc$mean)^2))     # RMSE
+mean(abs(test - fc$mean))          # MAE
+
+
+### (VAR)
+
+library(readxl); library(tseries); library(vars)
+
+# 1. Import (1st column = Date, other columns = variables)
+data <- read_excel("C:/Users/HP/Downloads/World Indices.xlsx")
+# data <- read.csv("C:/Users/HP/Downloads/file.csv")    # remove # for CSV
+head(data)
+
+# 2. Clean
+df <- as.data.frame(data[, -1])
+df <- as.data.frame(lapply(df, function(x) as.numeric(gsub(",", "", x))))
+df <- na.omit(df)
+# df <- df[nrow(df):1, ]                                # remove # ONLY if newest date is at the top
+
+# 3. Return series (sir's way)
+ret <- diff(log(as.matrix(df)))
+plot.ts(ret)
+
+# 4. Stationarity (add one line per variable)
+adf.test(ret[,1]); adf.test(ret[,2])
+
+# 5. Optimal lag (use the AIC(n) value)
+VARselect(ret, lag.max = 10, type = "const")
+
+# 6. Build VAR (replace 2 with the AIC lag)
+fit <- VAR(ret, p = 2, type = "const")
+summary(fit)
+
+# 7. Stability (all roots < 1)
+roots(fit, modulus = TRUE)
+
+# 8. Diagnostics
+serial.test(fit, lags.pt = 10, type = "PT.asymptotic")    # p>0.05 = no serial correlation
+arch.test(fit, lags.multi = 10, multivariate.only = TRUE) # p>0.05 = no ARCH effect
+normality.test(fit, multivariate.only = TRUE)             # p>0.05 = normal
+plot(stability(fit, type = "OLS-CUSUM"))                  # structural break
+
+# 9. Granger causality (p<0.05 = causes)
+causality(fit, cause = colnames(ret)[1])
+causality(fit, cause = colnames(ret)[2])
+
+# 10. Impulse response
+plot(irf(fit, impulse = colnames(ret)[1], response = colnames(ret)[2], n.ahead = 10, boot = TRUE))
+
+# 11. Variance decomposition
+fevd(fit, n.ahead = 10)
+plot(fevd(fit, n.ahead = 10))
+
+# 12. Forecast
+fc <- predict(fit, n.ahead = 10, ci = 0.95)
+plot(fc)
+fanchart(fc, names = colnames(ret)[1])
+
+
