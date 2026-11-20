@@ -205,4 +205,169 @@ fanchart(fc, names = colnames(ret)[1])
 
 {r,warning=FALSE,message=FALSE,error=TRUE}  #for error 
 
+##gurrach 
+
+#GARCH
+df=read_excel("GARCH.xlsx")
+head(df)
+str(df)
+#Clean Data & Create Zoo Series
+Y=read.zoo(data.frame(df),FUN=as.Date,format="%d%m%Y")
+plot(Y)
+#Compute Log Returns
+rnifty=diff(log(Y$Nifty))
+rgold=diff(log(Y$Gold))
+rcrude=diff(log(Y$Crude))
+
+YY=cbind.zoo(rnifty,rgold,rcrude)
+plot(YY)
+#ARCH Effect Test
+ArchTest(rnifty)
+ArchTest(rgold)
+ArchTest(rcrude)
+
+#Stationarity Tests on Returns
+adf.test(rnifty)
+adf.test(rgold)
+adf.test(rcrude)
+
+#Stationarity Tests on Returns
+adf.test(rnifty)
+adf.test(rgold)
+adf.test(rcrude)
+
+#Autocorrelation Test
+Box.test(rnifty,lag=10,type="Ljung-Box")
+Box.test(rgold,lag=10,type="Ljung-Box")
+Box.test(rcrude,lag=10,type="Ljung-Box")
+
+#Normality Test
+jarque.bera.test(rnifty)
+jarque.bera.test(rgold)
+jarque.bera.test(rcrude)
+
+#GARCH(1,1) — Nifty
+spec=ugarchspec(
+  variance.model=list(model="sGARCH",garchOrder=c(1,1)),
+  mean.model=list(armaOrder=c(1,1)),
+  distribution.model="std"
+)
+fit=ugarchfit(spec=spec,data=rnifty)
+fit
+
+#GARCH(1,1) — Gold
+spec=ugarchspec(
+  variance.model=list(model="sGARCH",garchOrder=c(1,1)),
+  mean.model=list(armaOrder=c(0,0)),
+  distribution.model="std"
+)
+fit=ugarchfit(spec=spec,data=rgold)
+fit
+
+#GARCH(1,1) — Crude Oil
+spec=ugarchspec(
+  variance.model=list(model="sGARCH",garchOrder=c(1,1)),
+  mean.model=list(armaOrder=c(0,0)),
+  distribution.model="std"
+)
+fit=ugarchfit(spec=spec,data=rcrude)
+fit
+plot(fit,which="all")
+
+#Residual Diagnostics After GARCH
+residuals=residuals(fit,standardize=TRUE)
+Box.test(residuals,lag=10,type="Ljung-Box")
+ArchTest(residuals,lags=10)
+
+#Forecast Volatility
+fc_garch=ugarchforecast(fit,n.ahead=10)
+plot(fc_garch,which=3)
+
+#EGARCH Model
+spec_e=ugarchspec(
+  variance.model=list(model="eGARCH",garchOrder=c(1,1)),
+  mean.model=list(armaOrder=c(0,0))
+)
+fit_e=ugarchfit(spec=spec_e,data=rnifty)
+fit_e
+plot(fit_e,which="all")
+
+#GJR-GARCH (TGARCH) Model
+spec_gjr=ugarchspec(
+  variance.model=list(model="gjrGARCH",garchOrder=c(1,1)),
+  mean.model=list(armaOrder=c(0,0))
+)
+fit_gjr=ugarchfit(spec=spec_gjr,data=rgold)
+fit_gjr
+
+#DCC Model
+uspec=ugarchspec(
+  mean.model=list(armaOrder=c(0,0)),
+  variance.model=list(garchOrder=c(1,1),model="sGARCH"),
+  distribution.model="norm"
+)
+dcc_spec=dccspec(
+  uspec=multispec(replicate(3,uspec)),
+  dccOrder=c(1,1),
+  distribution="mvnorm"
+)
+dcc_fit=dccfit(dcc_spec,data=data.frame(YY))
+dcc_fit
+
+R=rcor(dcc_fit)
+plot(rcov(dcc_fit))
+plot(rcor(dcc_fit))
+
+#DCC Pairwise Correlation Plots
+par(mfrow=c(1,3))
+plot(R[1,2,],type="l",main="DCC: Nifty vs Gold",xlab="Time",ylab="Correlation")
+plot(R[1,3,],type="l",main="DCC: Nifty vs Crude",xlab="Time",ylab="Correlation")
+plot(R[2,3,],type="l",main="DCC: Gold vs Crude",xlab="Time",ylab="Correlation")
+par(mfrow=c(1,1))
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
