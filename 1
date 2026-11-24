@@ -1,391 +1,127 @@
-## C1
+cd ~
+
+cat > run1.sh <<'EOF'
+cd ~
+echo "===== Q1 : WORD COUNT ====="
+echo "--- Mapper output ---"
+cat word.txt | python mapper.py
+echo "--- Local MapReduce result ---"
+cat word.txt | python mapper.py | sort | python reducer.py
+hdfs dfs -mkdir -p prg1
+hdfs dfs -put -f /home/cloudera/word.txt /user/cloudera/prg1
+hdfs dfs -ls /user/cloudera/prg1
+hdfs dfs -rm -r -f /user/cloudera/prg1/output
+chmod 777 mapper.py reducer.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg1/word.txt -output /user/cloudera/prg1/output -mapper /home/cloudera/mapper.py -reducer /home/cloudera/reducer.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg1/output/part-00000
+EOF
+
+cat > run2.sh <<'EOF'
+cd ~
+echo "===== Q2 : TITANIC AVERAGE AGE ====="
+echo "--- Mapper output ---"
+cat titanic.txt | python mapper2.py
+echo "--- Local MapReduce result ---"
+cat titanic.txt | python mapper2.py | sort | python reducer2.py
+hdfs dfs -mkdir -p prg2
+hdfs dfs -put -f /home/cloudera/titanic.txt /user/cloudera/prg2
+hdfs dfs -ls /user/cloudera/prg2
+hdfs dfs -rm -r -f /user/cloudera/prg2/output
+chmod 777 mapper2.py reducer2.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg2/titanic.txt -output /user/cloudera/prg2/output -mapper /home/cloudera/mapper2.py -reducer /home/cloudera/reducer2.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg2/output/part-00000
+EOF
+
+cat > run3.sh <<'EOF'
+cd ~
+echo "===== Q3 : MATRIX MULTIPLICATION ====="
+echo "--- Mapper output ---"
+cat input.txt | python mapper3.py
+echo "--- Local MapReduce result ---"
+cat input.txt | python mapper3.py | sort | python reducer3.py
+hdfs dfs -mkdir -p prg3
+hdfs dfs -put -f /home/cloudera/input.txt /user/cloudera/prg3
+hdfs dfs -ls /user/cloudera/prg3
+hdfs dfs -rm -r -f /user/cloudera/prg3/output
+chmod 777 mapper3.py reducer3.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg3/input.txt -output /user/cloudera/prg3/output -mapper /home/cloudera/mapper3.py -reducer /home/cloudera/reducer3.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg3/output/part-00000
+EOF
+
+cat > run4.sh <<'EOF'
+cd ~
+echo "===== Q4 : PIG MOST OCCURRING START LETTER ====="
+cat lab4.pig
+pig -x local lab4.pig
+EOF
+
+cat > run5.sh <<'EOF'
+cd ~
+echo "===== Q5 : SPARK RDD TO DATAFRAME ====="
+spark-submit --master local --conf spark.eventLog.enabled=false rdd.py
+EOF
+
+cat > run6.sh <<'EOF'
+cd ~
+echo "===== Q6 : HDFS FILE MANAGEMENT ====="
+hdfs dfs -rm -r -f /user/cloudera/lab4
+echo "--- 1. Create directory ---"
+hdfs dfs -mkdir lab4
+echo "--- 2. List directory ---"
+hdfs dfs -ls /user/cloudera/lab4
+echo "--- 3. Add file : copy from local to HDFS ---"
+hdfs dfs -put /home/cloudera/titanic.txt /user/cloudera/lab4
+hdfs dfs -ls /user/cloudera/lab4
+echo "--- 4. Retrieve file : view contents ---"
+hdfs dfs -cat /user/cloudera/lab4/titanic.txt
+echo "--- 5. Retrieve file : copy back to local ---"
+rm -f /home/cloudera/titanic_copy.txt
+hdfs dfs -get /user/cloudera/lab4/titanic.txt /home/cloudera/titanic_copy.txt
+ls -l /home/cloudera/titanic_copy.txt
+echo "--- 6. Delete directory ---"
+hdfs dfs -rm -r /user/cloudera/lab4
+hdfs dfs -ls
+EOF
+
+cat > run7.sh <<'EOF'
+cd ~
+echo "===== Q7 : PYSPARK RETAIL SALES ANALYSIS ====="
+spark-submit --master local --conf spark.eventLog.enabled=false retail.py
+EOF
+
+cat > run8.sh <<'EOF'
+cd ~
+echo "===== Q8 : PIG PRODUCT ANALYSIS ====="
+echo "Output order: 1 all records, 2 grouped by category, 3 count per category, 4 Electronics only"
+cat lab8.pig
+pig -x local lab8.pig
+EOF
 
-# install.packages("tinytex")
-tinytex::install_tinytex()
-# install.packages(c("readxl","tseries","forecast","lmtest","vars","urca","moments"))
-# install.packages(c("FinTS","rugarch","rmgarch","BEKKs","tsDyn"))
-library(readxl); library(tseries); library(forecast); library(lmtest); library(vars); library(urca)
-library(moments); library(FinTS); library(rugarch); library(rmgarch); library(BEKKs); library(tsDyn)
-st <- function(z) round(c(ADF=adf.test(z)$p.value, PP=pp.test(z)$p.value, KPSS=kpss.test(z)$p.value), 4)
+cat > run9.sh <<'EOF'
+cd ~
+echo "===== Q9 : STUDENT DATAFRAME SAVED IN HDFS ====="
+hdfs dfs -rm -r -f /user/cloudera/output_students
+spark-submit --master local --conf spark.eventLog.enabled=false students.py
+echo "--- hdfs dfs -ls /user/cloudera/output_students ---"
+hdfs dfs -ls /user/cloudera/output_students
+echo "--- hdfs dfs -cat /user/cloudera/output_students/part-* ---"
+hdfs dfs -cat /user/cloudera/output_students/part-*
+EOF
 
+chmod 777 run*.sh
+for f in run*.sh; do bash -n $f || echo "BROKEN: $f"; done
+echo "PART 2 DONE"
 
-## C2
 
-f <- file.choose()
-d <- if (grepl("xls", f)) read_excel(f) else read.csv(f)
-d <- d[order(as.Date(d[[1]])), ]; dates <- as.Date(d[[1]])
-X <- as.data.frame(lapply(d[-1], function(z) as.numeric(gsub(",", "", z))))
-X <- X[, colSums(is.na(X)) == 0, drop=FALSE]
-X <- X[, 1:min(ncol(X), 3), drop=FALSE]; head(X)
-y <- X[, 1]; n <- length(y); r <- diff(log(y))
-lX <- log(X); Rd <- as.data.frame(diff(as.matrix(lX)))
+## ---------------to run------------------------------------ 
 
-plot(dates, y, type="l"); plot(dates[-1], r, type="l")
-st(y); st(r)
+bash run1.sh 
+to 
+bash run9.sh
 
 
-##  TREND
 
-ma <- function(k) as.numeric(stats::filter(y, rep(1/k, k)))
-plot(dates, y, type="l"); lines(dates, ma(5), col=2); lines(dates, ma(30), col=4)
-summary(lm(y ~ seq_along(y)))
-h <- n %/% 2; c(mean(y[1:h]), mean(y[(h+1):n]))
-par(mfrow=c(3,1), mar=c(3,3,2,1))
-plot(ma(90), type="l", main="Long"); plot(ma(30)-ma(90), type="l", main="Medium"); plot(y-ma(30), type="l", main="Short")
-par(mfrow=c(1,1), mar=c(5,4,4,2)+0.1)
-plot(decompose(ts(y, frequency=12)))
 
-
-##  ARIMA
-
-acf(diff(y)); pacf(diff(y))
-m1 <- Arima(y, order=c(1,1,0)); m2 <- Arima(y, order=c(0,1,1)); m3 <- Arima(y, order=c(1,1,1))
-AIC(m1,m2,m3); BIC(m1,m2,m3); best <- m3
-coeftest(best); checkresiduals(best)
-fc <- forecast(best, h=20); fc; plot(fc, include=100)
-auto.arima(y); k <- floor(.8*n); accuracy(forecast(auto.arima(y[1:k]), h=n-k), y[(k+1):n])
-
-
-## VAR
-
-if (ncol(Rd) < 2) stop("Needs 2+ columns: load the World Indices / VAR file")
-nm <- names(Rd); a <- nm[1]; b <- nm[2]
-p <- VARselect(Rd, lag.max=10)$selection[["AIC(n)"]]; p
-summary(ca.jo(lX, type="trace", ecdet="trend", K=2))
-summary(VECM(lX, lag=2, r=1))
-V <- VAR(Rd, p=p); summary(V)
-roots(V); serial.test(V); arch.test(V); normality.test(V)
-for (v in nm) print(causality(V, cause=v)$Granger)
-plot(irf(V, impulse=a, response=b, n.ahead=10, boot=FALSE))
-fevd(V, n.ahead=10)[[a]]; plot(fevd(V, n.ahead=10), names=a)
-fanchart(predict(V, n.ahead=10), names=a)
-
-
-## GARCH
-
-sapply(Rd, function(z) c(ARCH=ArchTest(z)$p.value, LB=Box.test(z,10,"Ljung-Box")$p.value, JB=jarque.bera.test(z)$p.value))
-gf <- function(z, m="sGARCH") ugarchfit(ugarchspec(variance.model=list(model=m), mean.model=list(armaOrder=c(0,0)), distribution.model="std"), z)
-g <- gf(Rd[,1]); g; gf(Rd[,1], "eGARCH"); gf(Rd[,1], "gjrGARCH")
-zr <- as.numeric(residuals(g, standardize=TRUE)); Box.test(zr, 10, "Ljung-Box"); ArchTest(zr, lags=10)
-plot(ugarchforecast(g, n.ahead=10), which=3)
-
-
-##  DCC AND BEKK
-
-if (ncol(Rd) < 2) stop("Needs 2+ columns: load the World Indices / VAR file")
-u <- ugarchspec(mean.model=list(armaOrder=c(0,0)), variance.model=list(model="sGARCH"))
-D <- dccfit(dccspec(multispec(replicate(ncol(Rd), u)), dccOrder=c(1,1), distribution="mvnorm"), data=Rd); D
-plot(rcor(D)[1,2,], type="l")
-b <- bekk_fit(bekk_spec(model=list(type="bekk", asymmetric=FALSE)), as.matrix(Rd), QML_t_ratios=TRUE); summary(b)
-2*(1-pnorm(abs(b$A_t))); 2*(1-pnorm(abs(b$G_t)))
-
-
-## RULES
-# ADF/PP p<0.05 = stationary. KPSS p>0.05 = stationary.
-# Ljung-Box p>0.05 = good model. Lowest AIC/BIC = best.
-# Johansen: stat > 5pct = cointegrated. Granger p<0.05 = causes.
-# ARCH p<0.05 = use GARCH. dcca1+dccb1<1 = stable. BEKK A/G p<0.05 = spillover.
-
-
-
-### BACKUP (ARIMA)
-
-library(readxl); library(tseries); library(forecast)
-
-# 1. Import (change path; sir's file has columns Date and Price)
-df <- read_excel("C:/Users/HP/Downloads/Nifty 50.xlsx")
-# df <- read.csv("C:/Users/HP/Downloads/file.csv")      # remove # for CSV
-head(df)
-
-# 2. Clean (1st column = Date, 2nd = Price)
-df <- df[, 1:2]
-names(df) <- c("Date", "Price")
-df$Date  <- as.Date(df$Date)
-# df$Date <- as.Date(df$Date, format = "%d-%m-%Y")      # remove # if Date turns NA
-df$Price <- as.numeric(gsub(",", "", df$Price))
-df <- na.omit(df[order(df$Date), ])
-Y <- ts(df$Price)
-
-# 3. Plot
-plot(df$Date, df$Price, type = "l", col = "blue", main = "Price")
-
-# 4. Stationarity on level (adf/pp p>0.05 = not stationary; kpss p<0.05 = not stationary)
-adf.test(Y); pp.test(Y); kpss.test(Y)
-
-# 5. First difference and test again
-dY <- diff(Y)
-plot(dY, main = "First Difference")
-adf.test(dY); pp.test(dY); kpss.test(dY)
-
-# 6. ACF and PACF
-acf(dY); pacf(dY)
-
-# 7. Manual models and comparison (lowest AIC/BIC = best)
-fit_110 <- Arima(Y, order = c(1,1,0))
-fit_011 <- Arima(Y, order = c(0,1,1))
-fit_111 <- Arima(Y, order = c(1,1,1))
-fit_211 <- Arima(Y, order = c(2,1,1))
-AIC(fit_110, fit_011, fit_111, fit_211)
-BIC(fit_110, fit_011, fit_111, fit_211)
-accuracy(fit_110)
-
-# 8. Residual check of the best model (change fit_110 to the best one)
-checkresiduals(fit_110)
-
-# 9. Forecast
-plot(forecast(fit_110, h = 20))
-
-# 10. Auto ARIMA (if sir asks)
-fit_auto <- auto.arima(Y)
-summary(fit_auto)
-plot(forecast(fit_auto, h = 20))
-
-# 11. In-sample forecast, 80% train / 20% test (if sir asks)
-n <- length(Y); k <- floor(0.8 * n)
-train <- ts(Y[1:k]); test <- Y[(k+1):n]
-fit_tr <- auto.arima(train)
-fc <- forecast(fit_tr, h = length(test))
-sqrt(mean((test - fc$mean)^2))     # RMSE
-mean(abs(test - fc$mean))          # MAE
-
-
-### (VAR)
-
-library(readxl); library(tseries); library(vars)
-
-# 1. Import (1st column = Date, other columns = variables)
-data <- read_excel("C:/Users/HP/Downloads/World Indices.xlsx")
-# data <- read.csv("C:/Users/HP/Downloads/file.csv")    # remove # for CSV
-head(data)
-
-# 2. Clean
-df <- as.data.frame(data[, -1])
-df <- as.data.frame(lapply(df, function(x) as.numeric(gsub(",", "", x))))
-df <- na.omit(df)
-# df <- df[nrow(df):1, ]                                # remove # ONLY if newest date is at the top
-
-# 3. Return series (sir's way)
-ret <- diff(log(as.matrix(df)))
-plot.ts(ret)
-
-# 4. Stationarity (add one line per variable)
-adf.test(ret[,1]); adf.test(ret[,2])
-
-# 5. Optimal lag (use the AIC(n) value)
-VARselect(ret, lag.max = 10, type = "const")
-
-# 6. Build VAR (replace 2 with the AIC lag)
-fit <- VAR(ret, p = 2, type = "const")
-summary(fit)
-
-# 7. Stability (all roots < 1)
-roots(fit, modulus = TRUE)
-
-# 8. Diagnostics
-serial.test(fit, lags.pt = 10, type = "PT.asymptotic")    # p>0.05 = no serial correlation
-arch.test(fit, lags.multi = 10, multivariate.only = TRUE) # p>0.05 = no ARCH effect
-normality.test(fit, multivariate.only = TRUE)             # p>0.05 = normal
-plot(stability(fit, type = "OLS-CUSUM"))                  # structural break
-
-# 9. Granger causality (p<0.05 = causes)
-causality(fit, cause = colnames(ret)[1])
-causality(fit, cause = colnames(ret)[2])
-
-# 10. Impulse response
-plot(irf(fit, impulse = colnames(ret)[1], response = colnames(ret)[2], n.ahead = 10, boot = TRUE))
-
-# 11. Variance decomposition
-fevd(fit, n.ahead = 10)
-plot(fevd(fit, n.ahead = 10))
-
-# 12. Forecast
-fc <- predict(fit, n.ahead = 10, ci = 0.95)
-plot(fc)
-fanchart(fc, names = colnames(ret)[1])
-
-{r,warning=FALSE,message=FALSE,error=TRUE}  #for error 
-
-##gurrach 
-
-#GARCH
-df=read_excel("GARCH.xlsx")
-head(df)
-str(df)
-#Clean Data & Create Zoo Series
-Y=read.zoo(data.frame(df),FUN=as.Date,format="%d%m%Y")
-plot(Y)
-#Compute Log Returns
-rnifty=diff(log(Y$Nifty))
-rgold=diff(log(Y$Gold))
-rcrude=diff(log(Y$Crude))
-
-YY=cbind.zoo(rnifty,rgold,rcrude)
-plot(YY)
-#ARCH Effect Test
-ArchTest(rnifty)
-ArchTest(rgold)
-ArchTest(rcrude)
-
-#Stationarity Tests on Returns
-adf.test(rnifty)
-adf.test(rgold)
-adf.test(rcrude)
-
-#Stationarity Tests on Returns
-adf.test(rnifty)
-adf.test(rgold)
-adf.test(rcrude)
-
-#Autocorrelation Test
-Box.test(rnifty,lag=10,type="Ljung-Box")
-Box.test(rgold,lag=10,type="Ljung-Box")
-Box.test(rcrude,lag=10,type="Ljung-Box")
-
-#Normality Test
-jarque.bera.test(rnifty)
-jarque.bera.test(rgold)
-jarque.bera.test(rcrude)
-
-#GARCH(1,1) — Nifty
-spec=ugarchspec(
-  variance.model=list(model="sGARCH",garchOrder=c(1,1)),
-  mean.model=list(armaOrder=c(1,1)),
-  distribution.model="std"
-)
-fit=ugarchfit(spec=spec,data=rnifty)
-fit
-
-#GARCH(1,1) — Gold
-spec=ugarchspec(
-  variance.model=list(model="sGARCH",garchOrder=c(1,1)),
-  mean.model=list(armaOrder=c(0,0)),
-  distribution.model="std"
-)
-fit=ugarchfit(spec=spec,data=rgold)
-fit
-
-#GARCH(1,1) — Crude Oil
-spec=ugarchspec(
-  variance.model=list(model="sGARCH",garchOrder=c(1,1)),
-  mean.model=list(armaOrder=c(0,0)),
-  distribution.model="std"
-)
-fit=ugarchfit(spec=spec,data=rcrude)
-fit
-plot(fit,which="all")
-
-#Residual Diagnostics After GARCH
-residuals=residuals(fit,standardize=TRUE)
-Box.test(residuals,lag=10,type="Ljung-Box")
-ArchTest(residuals,lags=10)
-
-#Forecast Volatility
-fc_garch=ugarchforecast(fit,n.ahead=10)
-plot(fc_garch,which=3)
-
-#EGARCH Model
-spec_e=ugarchspec(
-  variance.model=list(model="eGARCH",garchOrder=c(1,1)),
-  mean.model=list(armaOrder=c(0,0))
-)
-fit_e=ugarchfit(spec=spec_e,data=rnifty)
-fit_e
-plot(fit_e,which="all")
-
-#GJR-GARCH (TGARCH) Model
-spec_gjr=ugarchspec(
-  variance.model=list(model="gjrGARCH",garchOrder=c(1,1)),
-  mean.model=list(armaOrder=c(0,0))
-)
-fit_gjr=ugarchfit(spec=spec_gjr,data=rgold)
-fit_gjr
-
-#DCC Model
-uspec=ugarchspec(
-  mean.model=list(armaOrder=c(0,0)),
-  variance.model=list(garchOrder=c(1,1),model="sGARCH"),
-  distribution.model="norm"
-)
-dcc_spec=dccspec(
-  uspec=multispec(replicate(3,uspec)),
-  dccOrder=c(1,1),
-  distribution="mvnorm"
-)
-dcc_fit=dccfit(dcc_spec,data=data.frame(YY))
-dcc_fit
-
-R=rcor(dcc_fit)
-plot(rcov(dcc_fit))
-plot(rcor(dcc_fit))
-
-#DCC Pairwise Correlation Plots
-par(mfrow=c(1,3))
-plot(R[1,2,],type="l",main="DCC: Nifty vs Gold",xlab="Time",ylab="Correlation")
-plot(R[1,3,],type="l",main="DCC: Nifty vs Crude",xlab="Time",ylab="Correlation")
-plot(R[2,3,],type="l",main="DCC: Gold vs Crude",xlab="Time",ylab="Correlation")
-par(mfrow=c(1,1))
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-R version 4.6.2 (2026-10-29 ucrt) -- "Diversified Portfolio"
-Copyright (C) 2026 The R Foundation for Statistical Computing
-Platform: x86_64-w64-mingw32/x64
-
-R is free software and comes with ABSOLUTELY NO WARRANTY.
-You are welcome to redistribute it under certain conditions.
-Type 'license()' or 'licence()' for distribution details.
-
-Natural language support but running in an English locale
-
-R is a collaborative project with many contributors.
-Type 'contributors()' for more information and
-'citation()' on how to cite R or R packages in publications.
-
-Type 'demo()' for some demos, 'help()' for on-line help, or
-'help.start()' for an HTML browser interface to help.
-Type 'q()' to quit R.
-[Workspace loaded from ~/.RData]
